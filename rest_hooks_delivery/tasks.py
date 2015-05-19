@@ -21,3 +21,10 @@ def store_hook(*args, **kwargs):
         payload=hook_payload,
         hook_id=hook
     )
+
+@shared_task
+def time_batch():
+    target_urls = StoredHook.objects.values_list('target', flat=True).distinct()
+
+    for url in target_urls:
+        batch_and_send(url)
