@@ -10,7 +10,7 @@ setup(
     author='PressLabs',
     author_email='ping@presslabs.com',
     url='http://github.com/PressLabs/django-rest-hooks-delivery',
-    install_requires=['Django>=1.7', 'requests', 'django-jsonfield'],
+    install_requires=['Django>=1.7', 'requests', 'jsonfield'],
     packages=['rest_hooks_delivery'],
     include_package_data=True,
     zip_safe=False,
