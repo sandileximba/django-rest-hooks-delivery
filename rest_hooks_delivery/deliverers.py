@@ -71,6 +71,7 @@ class Client(object):
             cleanup = kwargs.pop('_cleanup')
             r = getattr(requests, method)(*args, **kwargs)
             payload = kwargs.get('data', '{}')
+            headers = kwargs.get('header')
             if r.status_code > 299:
                 try:
                     failed_hook = FailedHook.objects.get(target=r.request.url,
@@ -96,6 +97,7 @@ class Client(object):
                         event=hook_event,
                         user_id=hook_user_id,
                         hook_id=hook_id
+                        headers=headers
                     )
             elif cleanup:
                 FailedHook.objects.filter(target=r.request.url,

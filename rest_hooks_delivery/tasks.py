@@ -56,7 +56,7 @@ def store_and_count(*args, **kwargs):
             event=hook_event,
             user_id=hook_user_id,
             payload=hook_payload,
-            hook_id=hook
+            hook_id=hook,
             headers=headers
         )
 
