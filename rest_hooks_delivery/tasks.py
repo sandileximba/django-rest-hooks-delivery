@@ -48,7 +48,7 @@ def store_and_count(*args, **kwargs):
     hook_user_id = kwargs.pop('_hook_user_id')
     hook_payload = kwargs.get('data', '{}')
     hook = kwargs.pop('_hook_id')
-    headers = kwargs.get('headers')
+    headers = kwargs.get('headers',{})
 
     with redis.Redis().lock(BATCH_LOCK):
         StoredHook.objects.create(
