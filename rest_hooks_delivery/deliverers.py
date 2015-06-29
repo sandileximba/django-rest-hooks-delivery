@@ -120,10 +120,9 @@ def retry(target, payload, instance=None, hook=None, cleanup=False, **kwargs):
         _cleanup=cleanup
     )
 
-def batch(target, payload, headers=None, instance=None, hook=None, cleanup=False, **kwargs):
+def batch(target, payload, instance=None, hook=None, cleanup=False, **kwargs):
     store_hook.delay(
         url=target,
-        headers=headers,
         data=json.dumps(payload, cls=DjangoJSONEncoder)\
           if not isinstance(payload, str) else payload,
         _hook_id=hook.pk,
