@@ -16,7 +16,7 @@ import requests, json, redis
 BATCH_DELIVERER = 'rest_hooks_delivery.deliverers.batch'
 HOOK_DELIVERER = getattr(settings, 'HOOK_DELIVERER', None)
 HOOK_DELIVERER_SETTINGS = getattr(settings, 'HOOK_DELIVERER_SETTINGS', None)
-HOOK_TARGET_MODEL = gettattr(setting, 'HOOK_EVENT_TARGET', 'core.Application')
+HOOK_TARGET_MODEL = getattr(setting, 'HOOK_TARGET_MODEL', 'core.Application')
 
 BATCH_LOCK = 'batch_lock'
 
