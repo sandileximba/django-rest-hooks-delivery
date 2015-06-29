@@ -48,6 +48,7 @@ def store_and_count(*args, **kwargs):
     hook_user_id = kwargs.pop('_hook_user_id')
     hook_payload = kwargs.get('data', '{}')
     hook = kwargs.pop('_hook_id')
+    headers = kwargs.get('headers')
 
     with redis.Redis().lock(BATCH_LOCK):
         StoredHook.objects.create(
@@ -56,6 +57,7 @@ def store_and_count(*args, **kwargs):
             user_id=hook_user_id,
             payload=hook_payload,
             hook_id=hook
+            headers=headers
         )
 
         count = StoredHook.objects.filter(target=target_url).count()
@@ -71,7 +73,7 @@ def clear_events(target_url):
         events = StoredHook.objects.filter(target=target_url).delete()
 
 @shared_task
-def batch_and_send(target_url, headers):
+def batch_and_send(target_url):
     have_lock = False
     _lock = redis.Redis().lock(BATCH_LOCK)
     try:
@@ -87,6 +89,7 @@ def batch_and_send(target_url, headers):
 
                 if len(batch_data_list):
                     content_headers={'Content-Type': 'application/json'}
+                    headers = events[0].headers
                     if headers is not None:
                         content_headers.update(headers)
                     r = requests.post(
@@ -105,7 +108,7 @@ def batch_and_send(target_url, headers):
                             _lock.release()
                             have_lock = False
                             raise batch_and_send.retry(
-                                args=(target_url, headers,),
+                                args=(target_url,),
                                 countdown=\
                                     settings.HOOK_DELIVERER_SETTINGS['retry']['retry_interval'])
                 if have_lock:
@@ -120,7 +123,7 @@ def batch_and_send(target_url, headers):
                         _lock.release()
                         have_lock = False
                         raise batch_and_send.retry(
-                            args=(target_url, headers,), exc=exc,
+                            args=(target_url,), exc=exc,
                             countdown=\
                                 settings.HOOK_DELIVERER_SETTINGS['retry']['retry_interval'])
                 else:

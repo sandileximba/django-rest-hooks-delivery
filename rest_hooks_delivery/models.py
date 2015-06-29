@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db import models
 
 from django.utils import timezone
+from jsonfield import JSONField
 
 HOOK_EVENTS = getattr(settings, 'HOOK_EVENTS', None)
 if HOOK_EVENTS is None:
@@ -13,6 +14,7 @@ AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
 class StoredHook(models.Model):
     target = models.URLField('Original target URL', max_length=255,
                              editable=False, db_index=True)
+    headers = JSONField()
     event = models.CharField('Event', max_length=64, db_index=True,
                              choices=[(e, e) for e in
                                      sorted(HOOK_EVENTS.keys())],
@@ -34,6 +36,7 @@ class FailedHook(models.Model):
                                       db_index=True)
     target = models.URLField('Original target URL', max_length=255,
                              editable=False, db_index=True)
+    headers = JSONField()
     event = models.CharField('Event', max_length=64, db_index=True,
                              choices=[(e, e) for e in
                                       sorted(HOOK_EVENTS.keys())],
