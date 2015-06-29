@@ -96,7 +96,7 @@ class Client(object):
                         last_status=r.status_code,
                         event=hook_event,
                         user_id=hook_user_id,
-                        hook_id=hook_id
+                        hook_id=hook_id,
                         headers=headers
                     )
             elif cleanup:
