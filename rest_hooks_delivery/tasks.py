@@ -91,6 +91,7 @@ def batch_and_send(target_url):
                     content_headers={'Content-Type': 'application/json'}
                     if HOOK_TARGET_MODEL != '' and HOOK_TARGET_MODEL is not None:
                         hook_target_model = get_model(HOOK_TARGET_MODEL)
+                        content_headers.update({'API':hook_target_model.api_key})
                         try:
                             hook_dest = hook_target_model.objects.get(target=target_url)
                             print(hook_dest)
