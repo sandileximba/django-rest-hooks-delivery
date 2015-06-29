@@ -88,18 +88,20 @@ def batch_and_send(target_url):
                     batch_data_list.append(json.loads(event.payload))
 
                 if len(batch_data_list):
+                    data = json.dumps(batch_data_list, cls=DjangoJSONEncoder)
                     content_headers={'Content-Type': 'application/json'}
                     if HOOK_TARGET_MODEL != '' and HOOK_TARGET_MODEL is not None:
                         hook_target_model = get_model(HOOK_TARGET_MODEL)
 
                         try:
                             hook_dest = hook_target_model.objects.get(target=target_url)
-                            content_headers.update({'API':hook_dest.api_key})
+                            content_headers.update({'API': \
+                                                    hook_dest.sign_message(data)})
                         except Exception as e:
                             pass
                     r = requests.post(
                         target_url,
-                        data=json.dumps(batch_data_list, cls=DjangoJSONEncoder),
+                        data=data,
                         headers=content_headers)
                     if (r.status_code > 299 and not 'retry' in \
                         settings.HOOK_DELIVERER_SETTINGS) or (r.status_code < 300):
