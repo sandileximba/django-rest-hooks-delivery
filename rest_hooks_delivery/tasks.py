@@ -11,7 +11,7 @@ from rest_hooks_delivery.models import StoredHook
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 
-import requests, json, redis
+import requests, json, redis, random
 
 BATCH_DELIVERER = 'rest_hooks_delivery.deliverers.batch'
 HOOK_DELIVERER = getattr(settings, 'HOOK_DELIVERER', None)
