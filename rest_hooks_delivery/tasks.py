@@ -25,7 +25,6 @@ if HOOK_DELIVERER == BATCH_DELIVERER  and\
 def store_hook(*args, **kwargs):
     target_url = kwargs.get('url')
     current_count = store_and_count(*args, **kwargs)
-    headers = kwargs.get('headers')
     # If first in queue and batching by time
     if 'time' in settings.HOOK_DELIVERER_SETTINGS:
         if current_count == 1:
@@ -48,7 +47,6 @@ def store_and_count(*args, **kwargs):
     hook_user_id = kwargs.pop('_hook_user_id')
     hook_payload = kwargs.get('data', '{}')
     hook = kwargs.pop('_hook_id')
-    headers = kwargs.get('headers',{})
 
     with redis.Redis().lock(BATCH_LOCK):
         StoredHook.objects.create(
@@ -56,8 +54,7 @@ def store_and_count(*args, **kwargs):
             event=hook_event,
             user_id=hook_user_id,
             payload=hook_payload,
-            hook_id=hook,
-            headers=headers
+            hook_id=hook
         )
 
         count = StoredHook.objects.filter(target=target_url).count()
@@ -84,12 +81,14 @@ def batch_and_send(target_url):
             try:
                 events = StoredHook.objects.filter(target=target_url)
                 batch_data_list = []
+                headers = None
                 for event in events:
                     batch_data_list.append(json.loads(event.payload))
+                    if "headers" in event.payload:
+                        headers = event.payload["headers"]
 
                 if len(batch_data_list):
                     content_headers={'Content-Type': 'application/json'}
-                    headers = events[0].headers
                     if headers is not None:
                         content_headers.update(headers)
                     r = requests.post(
