@@ -29,7 +29,7 @@ def store_hook(*args, **kwargs):
     # If first in queue and batching by time
     if 'time' in settings.HOOK_DELIVERER_SETTINGS:
         if current_count == 1:
-            batch_and_send.apply_async(args=(target_url, headers,),
+            batch_and_send.apply_async(args=(target_url,),
                 countdown=settings.HOOK_DELIVERER_SETTINGS['time'],
                 link_error=fail_handler.s(target_url),
                 )
@@ -37,7 +37,7 @@ def store_hook(*args, **kwargs):
     if 'size' in settings.HOOK_DELIVERER_SETTINGS:
         # (>=) because if retry is True count can be > size
         if current_count >= settings.HOOK_DELIVERER_SETTINGS['size']:
-            batch_and_send.apply(args=(target_url, headers,),
+            batch_and_send.apply(args=(target_url,),
                 countdown=0,
                 link_error=fail_handler.s(target_url))
 
