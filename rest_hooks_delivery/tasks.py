@@ -25,18 +25,19 @@ if HOOK_DELIVERER == BATCH_DELIVERER  and\
 def store_hook(*args, **kwargs):
     target_url = kwargs.get('url')
     current_count = store_and_count(*args, **kwargs)
-
+    headers = kwargs.get('headers')
     # If first in queue and batching by time
     if 'time' in settings.HOOK_DELIVERER_SETTINGS:
         if current_count == 1:
-            batch_and_send.apply_async(args=(target_url,),
+            batch_and_send.apply_async(args=(target_url, headers,),
                 countdown=settings.HOOK_DELIVERER_SETTINGS['time'],
-                link_error=fail_handler.s(target_url))
-    
+                link_error=fail_handler.s(target_url),
+                )
+
     if 'size' in settings.HOOK_DELIVERER_SETTINGS:
         # (>=) because if retry is True count can be > size
         if current_count >= settings.HOOK_DELIVERER_SETTINGS['size']:
-            batch_and_send.apply(args=(target_url,),
+            batch_and_send.apply(args=(target_url, headers,),
                 countdown=0,
                 link_error=fail_handler.s(target_url))
 
@@ -70,7 +71,7 @@ def clear_events(target_url):
         events = StoredHook.objects.filter(target=target_url).delete()
 
 @shared_task
-def batch_and_send(target_url):
+def batch_and_send(target_url, headers):
     have_lock = False
     _lock = redis.Redis().lock(BATCH_LOCK)
     try:
@@ -85,10 +86,13 @@ def batch_and_send(target_url):
                     batch_data_list.append(json.loads(event.payload))
 
                 if len(batch_data_list):
+                    content_headers={'Content-Type': 'application/json'}
+                    if headers is not None:
+                        content_headers.update(headers)
                     r = requests.post(
                         target_url,
                         data=json.dumps(batch_data_list, cls=DjangoJSONEncoder),
-                        headers={'Content-Type': 'application/json'})
+                        headers=content_headers)
                     if (r.status_code > 299 and not 'retry' in \
                         settings.HOOK_DELIVERER_SETTINGS) or (r.status_code < 300):
                         events.delete()
@@ -101,7 +105,7 @@ def batch_and_send(target_url):
                             _lock.release()
                             have_lock = False
                             raise batch_and_send.retry(
-                                args=(target_url,),
+                                args=(target_url, headers,),
                                 countdown=\
                                     settings.HOOK_DELIVERER_SETTINGS['retry']['retry_interval'])
                 if have_lock:
@@ -116,7 +120,7 @@ def batch_and_send(target_url):
                         _lock.release()
                         have_lock = False
                         raise batch_and_send.retry(
-                            args=(target_url,), exc=exc,
+                            args=(target_url, headers,), exc=exc,
                             countdown=\
                                 settings.HOOK_DELIVERER_SETTINGS['retry']['retry_interval'])
                 else:
