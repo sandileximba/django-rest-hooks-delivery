@@ -4,16 +4,19 @@ from __future__ import absolute_import
 
 from celery import shared_task
 
+from django.db.models import get_model
+
 from rest_hooks_delivery.models import StoredHook
 
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 
-import requests, json, redis
+import requests, json, redis, random
 
 BATCH_DELIVERER = 'rest_hooks_delivery.deliverers.batch'
 HOOK_DELIVERER = getattr(settings, 'HOOK_DELIVERER', None)
 HOOK_DELIVERER_SETTINGS = getattr(settings, 'HOOK_DELIVERER_SETTINGS', None)
+HOOK_TARGET_MODEL = getattr(settings, 'HOOK_TARGET_MODEL', 'core.Application')
 
 BATCH_LOCK = 'batch_lock'
 
@@ -25,14 +28,14 @@ if HOOK_DELIVERER == BATCH_DELIVERER  and\
 def store_hook(*args, **kwargs):
     target_url = kwargs.get('url')
     current_count = store_and_count(*args, **kwargs)
-
     # If first in queue and batching by time
     if 'time' in settings.HOOK_DELIVERER_SETTINGS:
         if current_count == 1:
             batch_and_send.apply_async(args=(target_url,),
                 countdown=settings.HOOK_DELIVERER_SETTINGS['time'],
-                link_error=fail_handler.s(target_url))
-    
+                link_error=fail_handler.s(target_url),
+                )
+
     if 'size' in settings.HOOK_DELIVERER_SETTINGS:
         # (>=) because if retry is True count can be > size
         if current_count >= settings.HOOK_DELIVERER_SETTINGS['size']:
@@ -85,10 +88,24 @@ def batch_and_send(target_url):
                     batch_data_list.append(json.loads(event.payload))
 
                 if len(batch_data_list):
+                    data = json.dumps(batch_data_list, cls=DjangoJSONEncoder)
+                    #We add 0 to 1000 random spaces at the end of the message to
+                    #introduce randomness enough for crypto
+                    data += int(random.random() * 1000) * ' '
+                    content_headers={'Content-Type': 'application/json'}
+                    if HOOK_TARGET_MODEL != '' and HOOK_TARGET_MODEL is not None:
+                        hook_target_model = get_model(HOOK_TARGET_MODEL)
+
+                        try:
+                            hook_dest = hook_target_model.objects.get(target=target_url)
+                            content_headers.update({'API_SIGNED_DIGEST': \
+                                                    hook_dest.sign_message(data)})
+                        except Exception as e:
+                            pass
                     r = requests.post(
                         target_url,
-                        data=json.dumps(batch_data_list, cls=DjangoJSONEncoder),
-                        headers={'Content-Type': 'application/json'})
+                        data=data,
+                        headers=content_headers)
                     if (r.status_code > 299 and not 'retry' in \
                         settings.HOOK_DELIVERER_SETTINGS) or (r.status_code < 300):
                         events.delete()

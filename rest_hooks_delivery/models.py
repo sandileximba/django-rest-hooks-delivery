@@ -4,11 +4,13 @@ from django.conf import settings
 from django.db import models
 
 from django.utils import timezone
+from jsonfield import JSONField
 
 HOOK_EVENTS = getattr(settings, 'HOOK_EVENTS', None)
 if HOOK_EVENTS is None:
     raise Exception('You need to define settings.HOOK_EVENTS!')
 AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
+
 
 class StoredHook(models.Model):
     target = models.URLField('Original target URL', max_length=255,
