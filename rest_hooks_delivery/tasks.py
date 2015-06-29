@@ -4,6 +4,8 @@ from __future__ import absolute_import
 
 from celery import shared_task
 
+from django.db.models import get_model
+
 from rest_hooks_delivery.models import StoredHook
 
 from django.conf import settings
@@ -14,6 +16,7 @@ import requests, json, redis
 BATCH_DELIVERER = 'rest_hooks_delivery.deliverers.batch'
 HOOK_DELIVERER = getattr(settings, 'HOOK_DELIVERER', None)
 HOOK_DELIVERER_SETTINGS = getattr(settings, 'HOOK_DELIVERER_SETTINGS', None)
+HOOK_TARGET_MODEL = gettattr(setting, 'HOOK_EVENT_TARGET', 'core.Application')
 
 BATCH_LOCK = 'batch_lock'
 
@@ -81,16 +84,18 @@ def batch_and_send(target_url):
             try:
                 events = StoredHook.objects.filter(target=target_url)
                 batch_data_list = []
-                headers = None
                 for event in events:
                     batch_data_list.append(json.loads(event.payload))
-                    if "headers" in event.payload:
-                        headers = event.payload["headers"]
 
                 if len(batch_data_list):
                     content_headers={'Content-Type': 'application/json'}
-                    if headers is not None:
-                        content_headers.update(headers)
+                    if HOOK_TARGET_MODEL != '' and HOOK_TARGET_MODEL is not None:
+                        hook_target_model = get_model(HOOK_TARGET_MODEL)
+                        try:
+                            hook_dest = hook_target_model.objects.get(target=target_url)
+                            print(hook_dest)
+                        except Exception as e:
+                            pass
                     r = requests.post(
                         target_url,
                         data=json.dumps(batch_data_list, cls=DjangoJSONEncoder),

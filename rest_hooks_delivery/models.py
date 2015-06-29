@@ -11,6 +11,7 @@ if HOOK_EVENTS is None:
     raise Exception('You need to define settings.HOOK_EVENTS!')
 AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
 
+
 class StoredHook(models.Model):
     target = models.URLField('Original target URL', max_length=255,
                              editable=False, db_index=True)
